@@ -677,7 +677,12 @@ def qb_disconnect():
     flash('QuickBooks disconnected', 'success')
     return redirect(url_for('settings'))
 
-
+with app.app_context():
+    try:
+        db.create_all()
+        print('Database tables created successfully')
+    except Exception as e:
+        print(f'Database error: {e}')
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
