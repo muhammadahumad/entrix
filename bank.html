@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Bank Statements — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title">Bank statements</h1>
+  <p class="page-sub">Upload your bank statement — AI extracts every transaction and suggests QB categories</p>
+
+  <div id="upload-section">
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('bank-file').click()" ondragover="ev(event,true)" ondragleave="ev(event,false)" ondrop="dropFile(event)">
+      <p style="font-size:15px;font-weight:500;margin-bottom:6px">Drop bank statement here</p>
+      <p style="font-size:12px;color:#888;margin-bottom:16px">JPG, PNG, PDF — any bank format supported</p>
+      <button class="btn" onclick="event.stopPropagation();document.getElementById('bank-file').click()">Choose file</button>
+    </div>
+    <input type="file" id="bank-file" accept="image/*,application/pdf" style="display:none" onchange="handleFile(this)">
+  </div>
+
+  <div id="processing-section" style="display:none">
+    <div class="status-bar status-processing" id="proc-status">
+      <div class="spinner"></div>
+      <span id="proc-text">Reading bank statement with Claude AI...</span>
+    </div>
+    <div class="progress-steps">
+      <div class="step active" id="step1"><div class="step-dot">1</div>Reading document</div>
+      <div class="step-line"></div>
+      <div class="step" id="step2"><div class="step-dot">2</div>Extracting transactions</div>
+      <div class="step-line"></div>
+      <div class="step" id="step3"><div class="step-dot">3</div>Categorising</div>
+      <div class="step-line"></div>
+      <div class="step" id="step4"><div class="step-dot">4</div>Ready to review</div>
+    </div>
+  </div>
+
+  <div id="review-section" style="display:none">
+    <div class="status-bar status-success" id="review-status">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+      <span id="review-msg">Transactions extracted — review then post</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Statement info <span class="badge badge-blue">AI extracted</span></div>
+      <div class="field-row">
+        <div><div class="field-label">Bank / Account</div><input class="field-input" id="bk-account"></div>
+        <div><div class="field-label">Statement period</div><input class="field-input" id="bk-period"></div>
+      </div>
+      <div class="field-row">
+        <div><div class="field-label">QB bank account</div>
+          <select class="select-input"><option>Business current account (1010)</option><option>Savings (1020)</option></select>
+        </div>
+        <div><div class="field-label">Currency</div>
+          <select class="select-input"><option>MVR</option><option>USD</option><option>EUR</option><option>AED</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <div class="card-title">
+        Transactions
+        <span id="txn-badges" style="display:flex;gap:6px"></span>
+      </div>
+      <table class="table" style="font-size:12px">
+        <thead><tr>
+          <th>Date</th><th>Description</th><th>QB account</th>
+          <th style="text-align:right">Amount</th><th style="text-align:center">Status</th>
+        </tr></thead>
+        <tbody id="txn-body"></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-success" id="post-btn" onclick="postBank()">Post all to QuickBooks</button>
+      <button class="btn" onclick="resetForm()">Upload another</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var bankData=null;
+var accounts={{ accounts|tojson }};
+
+function ev(e,on){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',on);}
+function dropFile(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');if(e.dataTransfer.files.length)processFile(e.dataTransfer.files[0]);}
+function handleFile(input){if(input.files.length)processFile(input.files[0]);}
+
+function processFile(file){
+  document.getElementById('upload-section').style.display='none';
+  document.getElementById('processing-section').style.display='block';
+  var steps=['step1','step2','step3','step4'];
+  var msgs=['Reading your document...','Extracting transaction rows...','Categorising...','Done!'];
+  advStep(steps,0,document.getElementById('proc-text'),msgs[0]);
+
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b64=e.target.result.split(',')[1];
+    advStep(steps,1,document.getElementById('proc-text'),msgs[1]);
+
+    fetch('/api/extract-bank',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({file:b64,media_type:file.type||'image/jpeg'})
+    }).then(function(r){return r.json();}).then(function(res){
+      advStep(steps,2,document.getElementById('proc-text'),msgs[2]);
+      setTimeout(function(){
+        advStep(steps,3,document.getElementById('proc-text'),msgs[3]);
+        setTimeout(function(){showReview(res);},300);
+      },500);
+    }).catch(function(err){
+      document.getElementById('proc-status').className='status-bar status-error';
+      document.getElementById('proc-text').textContent='Error: '+err.message;
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function showReview(res){
+  document.getElementById('processing-section').style.display='none';
+  document.getElementById('review-section').style.display='block';
+
+  if(!res.ok){
+    document.getElementById('review-status').className='status-bar status-error';
+    document.getElementById('review-status').innerHTML='<span>Error: '+res.error+'</span>';
+    return;
+  }
+
+  bankData=res.data;
+  document.getElementById('bk-account').value=bankData.account||'';
+  document.getElementById('bk-period').value=bankData.period||'';
+
+  var txns=bankData.transactions||[];
+  var low=txns.filter(function(t){return t.confidence==='low';}).length;
+  document.getElementById('review-msg').textContent=txns.length+' transactions extracted — review categories then post';
+  var badges=document.getElementById('txn-badges');
+  badges.innerHTML='<span class="badge badge-green">'+(txns.length-low)+' auto-matched</span>';
+  if(low>0)badges.innerHTML+='<span class="badge badge-amber">'+low+' needs review</span>';
+
+  var tbody=document.getElementById('txn-body');tbody.innerHTML='';
+  txns.forEach(function(t){
+    var amt=parseFloat(t.amount)||0;
+    var isCredit=amt>0;
+    var needsRev=t.confidence==='low';
+    var opts=accounts.map(function(a){var label=a.name+' ('+a.code+')';return '<option'+(label===t.suggested_account?' selected':'')+'>'+label+'</option>';}).join('');
+    var tr=document.createElement('tr');
+    if(needsRev)tr.style.background='#fffbeb';
+    tr.innerHTML='<td style="color:#666">'+esc(t.date||'')+'</td>'
+      +'<td>'+esc(t.description||'')+'</td>'
+      +'<td><select style="font-size:12px;padding:3px 6px;border:1px solid #d0d0c8;border-radius:4px;background:#fff;width:100%">'+opts+'</select></td>'
+      +'<td style="text-align:right;color:'+(isCredit?'#15803d':'#dc2626');'font-weight:500">'+(isCredit?'+':'-')+fmt(Math.abs(amt))+'</td>'
+      +'<td style="text-align:center"><span class="badge '+(needsRev?'badge-amber':'badge-green')+'">'+(needsRev?'review':'ok')+'</span></td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function postBank(){
+  var btn=document.getElementById('post-btn');
+  btn.disabled=true;btn.textContent='Posting...';
+  var bar=document.getElementById('review-status');
+  setTimeout(function(){
+    bar.className='status-bar status-success';
+    bar.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>Transactions saved to Entrix. QB posting coming in next update!</span>';
+    btn.textContent='Saved';
+  },1500);
+}
+
+function resetForm(){
+  bankData=null;
+  document.getElementById('upload-section').style.display='block';
+  document.getElementById('processing-section').style.display='none';
+  document.getElementById('review-section').style.display='none';
+  document.getElementById('txn-body').innerHTML='';
+  document.getElementById('bank-file').value='';
+  btn=document.getElementById('post-btn');
+  if(btn){btn.disabled=false;btn.textContent='Post all to QuickBooks';}
+  var steps=['step1','step2','step3','step4'];
+  steps.forEach(function(id,i){var el=document.getElementById(id);if(el){el.className='step';el.querySelector('.step-dot').textContent=i+1;}});
+}
+</script>
+{% endblock %}

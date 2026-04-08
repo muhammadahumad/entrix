@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create account — Entrix</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#1a1a1a;background:#f5f5f3;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.box{background:#fff;border:1px solid #e5e5e0;border-radius:16px;padding:40px;width:100%;max-width:420px}
+.brand{font-size:24px;font-weight:600;margin-bottom:4px}
+.brand span{color:#2563eb}
+.subtitle{font-size:13px;color:#666;margin-bottom:28px}
+.field-group{margin-bottom:14px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field-label{font-size:11px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.field-input{width:100%;padding:9px 12px;border:1px solid #d0d0c8;border-radius:8px;font-size:14px;color:#1a1a1a;background:#fff;font-family:inherit}
+.field-input:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.2)}
+.btn{width:100%;padding:10px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:#1a1a1a;color:#fff;transition:opacity .15s;font-family:inherit;margin-top:4px}
+.btn:hover{opacity:.85}
+.link-row{text-align:center;margin-top:16px;font-size:13px;color:#666}
+.link-row a{color:#2563eb}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="brand">En<span>trix</span></div>
+  <p class="subtitle">Create your free account</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST">
+    <div class="field-row">
+      <div>
+        <div class="field-label">Full name *</div>
+        <input class="field-input" type="text" name="name" placeholder="Mohamed Ahmed" required>
+      </div>
+      <div>
+        <div class="field-label">Company</div>
+        <input class="field-input" type="text" name="company" placeholder="Your business">
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-label">Email *</div>
+      <input class="field-input" type="email" name="email" placeholder="your@email.com" required>
+    </div>
+    <div class="field-group">
+      <div class="field-label">Password *</div>
+      <input class="field-input" type="password" name="password" placeholder="Min 8 characters" minlength="8" required>
+    </div>
+    <div class="field-group">
+      <div class="field-label">Country</div>
+      <select class="field-input" name="country">
+        <option value="Maldives" selected>Maldives</option>
+        <option value="UAE">UAE</option>
+        <option value="India">India</option>
+        <option value="Sri Lanka">Sri Lanka</option>
+        <option value="Bangladesh">Bangladesh</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <button type="submit" class="btn">Create free account</button>
+  </form>
+
+  <div class="link-row">
+    Already have an account? <a href="/login">Sign in</a>
+  </div>
+</div>
+</body>
+</html>

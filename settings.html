@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Settings — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title">Settings</h1>
+  <p class="page-sub">Manage your account and connections</p>
+
+  <div class="card">
+    <div class="card-title">Account details</div>
+    <div class="field-row">
+      <div><div class="field-label">Name</div><p style="font-size:14px;padding:8px 0">{{ user.name }}</p></div>
+      <div><div class="field-label">Email</div><p style="font-size:14px;padding:8px 0">{{ user.email }}</p></div>
+    </div>
+    <div class="field-row">
+      <div><div class="field-label">Company</div><p style="font-size:14px;padding:8px 0">{{ user.company or '—' }}</p></div>
+      <div><div class="field-label">Country</div><p style="font-size:14px;padding:8px 0">{{ user.country }}</p></div>
+    </div>
+    <div><div class="field-label">Member since</div><p style="font-size:13px;color:#666;padding:4px 0">{{ user.created_at.strftime('%d %B %Y') }}</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">QuickBooks Online</div>
+    {% if user.qb_access_token and user.qb_realm_id %}
+      <div class="alert alert-success" style="margin-bottom:14px">
+        Connected to QuickBooks Online ({{ user.qb_environment }}) · Company ID: {{ user.qb_realm_id }}
+      </div>
+      <a href="/qb/disconnect" class="btn btn-danger btn-sm">Disconnect QuickBooks</a>
+    {% else %}
+      <div class="alert alert-warn" style="margin-bottom:14px">
+        Not connected — bills will be saved to Entrix only. Connect to post directly to QuickBooks.
+      </div>
+      <a href="/qb/connect" class="btn btn-primary">Connect QuickBooks Online</a>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">Claude AI status</div>
+    <div class="alert alert-success">
+      Claude AI configured — real document extraction active
+    </div>
+    <p style="font-size:12px;color:#666">Every bill and bank statement you upload is read by real AI. Approximately 500 scans per $5 of API credit.</p>
+  </div>
+</div>
+{% endblock %}

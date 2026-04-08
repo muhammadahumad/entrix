@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block title %}Scan Bills — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title">Bills &amp; invoices</h1>
+  <p class="page-sub">Scan or upload a bill — Claude AI extracts all data including TIN number</p>
+
+  <div id="upload-section">
+    <div class="upload-zone" id="drop-zone" onclick="document.getElementById('bill-file').click()" ondragover="ev(event,true)" ondragleave="ev(event,false)" ondrop="dropFile(event)">
+      <p style="font-size:15px;font-weight:500;margin-bottom:6px">Drop bill / invoice / receipt here</p>
+      <p style="font-size:12px;color:#888;margin-bottom:16px">JPG, PNG, PDF — phone photos work perfectly</p>
+      <button class="btn" onclick="event.stopPropagation();document.getElementById('bill-file').click()">Choose file</button>
+    </div>
+    <input type="file" id="bill-file" accept="image/*,application/pdf" style="display:none" onchange="handleFile(this)">
+  </div>
+
+  <div id="processing-section" style="display:none">
+    <div id="img-preview-wrap"></div>
+    <div class="status-bar status-processing" id="proc-status">
+      <div class="spinner"></div>
+      <span id="proc-text">Sending to Claude AI...</span>
+    </div>
+    <div class="progress-steps">
+      <div class="step active" id="step1"><div class="step-dot">1</div>Reading document</div>
+      <div class="step-line"></div>
+      <div class="step" id="step2"><div class="step-dot">2</div>Extracting fields</div>
+      <div class="step-line"></div>
+      <div class="step" id="step3"><div class="step-dot">3</div>Checking vendor &amp; TIN</div>
+      <div class="step-line"></div>
+      <div class="step" id="step4"><div class="step-dot">4</div>Ready to review</div>
+    </div>
+  </div>
+
+  <div id="review-section" style="display:none">
+    <div class="status-bar status-success" id="review-status">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg>
+      <span>AI extraction complete — review and confirm before posting</span>
+    </div>
+
+    <!-- TIN Warning Block -->
+    <div id="tin-warning" class="tin-warning" style="display:none">
+      <div class="tin-warning-title">TIN number not found on this document</div>
+      <p style="font-size:12px;color:#92400e;margin-bottom:10px">A TIN number is required for tax compliance. Please enter it manually or select a MIRA sample TIN.</p>
+      <div class="field-row">
+        <div>
+          <div class="field-label">Enter TIN manually</div>
+          <input class="field-input" id="manual-tin" placeholder="e.g. 1234567890123">
+        </div>
+        {% if mira_tins %}
+        <div>
+          <div class="field-label">Or select MIRA sample TIN</div>
+          <select class="select-input" id="mira-tin-select" onchange="selectMiraTin(this.value)">
+            <option value="">— Select MIRA TIN —</option>
+            {% for t in mira_tins %}
+            <option value="{{ t.tin }}">{{ t.tin }} — {{ t.description }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px">
+        <input type="checkbox" id="tin-exempt-check" onchange="toggleTinExempt(this.checked)">
+        This supplier has no TIN — mark as exempt (informal/unregistered supplier)
+      </label>
+    </div>
+
+    <!-- Vendor Block -->
+    <div id="new-vendor-card" class="card" style="display:none">
+      <div class="card-title">New vendor detected <span class="badge badge-amber">Not in your database</span></div>
+      <div class="field-row">
+        <div><div class="field-label">Vendor name</div><input class="field-input" id="v-name" placeholder="Vendor name"></div>
+        <div><div class="field-label">TIN number</div><input class="field-input" id="v-tin" placeholder="TIN number"></div>
+      </div>
+      <div class="field-row triple">
+        <div><div class="field-label">Currency</div>
+          <select class="select-input" id="v-currency">
+            <option>MVR</option><option>USD</option><option>EUR</option><option>AED</option><option>INR</option>
+          </select>
+        </div>
+        <div><div class="field-label">Payment terms</div>
+          <select class="select-input" id="v-terms">
+            <option>Net 30</option><option>Net 15</option><option>Net 60</option><option>Due on receipt</option>
+          </select>
+        </div>
+        <div><div class="field-label">Email</div><input class="field-input" id="v-email" placeholder="vendor@email.com"></div>
+      </div>
+    </div>
+
+    <!-- Bill Details -->
+    <div class="card">
+      <div class="card-title">Bill details <span class="badge badge-blue">AI extracted</span></div>
+      <div class="field-row">
+        <div><div class="field-label">Vendor</div><input class="field-input" id="b-vendor"></div>
+        <div><div class="field-label">Invoice number</div><input class="field-input" id="b-invno"></div>
+      </div>
+      <div class="field-row triple">
+        <div><div class="field-label">Invoice date</div><input class="field-input" type="date" id="b-date"></div>
+        <div><div class="field-label">Due date</div><input class="field-input" type="date" id="b-due"></div>
+        <div><div class="field-label">Currency</div>
+          <select class="select-input" id="b-currency">
+            <option>MVR</option><option>USD</option><option>EUR</option><option>AED</option><option>INR</option><option>GBP</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div><div class="field-label">QB account</div>
+          <select class="select-input" id="b-account">
+            {% for a in accounts %}
+            <option>{{ a.name }} ({{ a.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div><div class="field-label">TIN on bill</div><input class="field-input" id="b-tin" placeholder="Extracted or entered TIN"></div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notes</div>
+        <input class="field-input" id="b-notes">
+      </div>
+    </div>
+
+    <!-- Line Items -->
+    <div class="card">
+      <div class="card-title">Line items <span class="badge badge-blue" id="items-badge">extracted</span></div>
+      <table class="line-item-table">
+        <thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody id="line-items-body"></tbody>
+      </table>
+      <div class="totals" id="bill-totals"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-success" id="post-btn" onclick="postBill()">Post to QuickBooks + Save</button>
+      <button class="btn" onclick="resetForm()">Scan another</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var extractedData = null;
+var vendorMatch = null;
+var miraTins = {{ mira_tins|tojson }};
+var tinExempt = false;
+
+function ev(e, on){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',on);}
+function dropFile(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');if(e.dataTransfer.files.length)processFile(e.dataTransfer.files[0]);}
+function handleFile(input){if(input.files.length)processFile(input.files[0]);}
+
+function processFile(file){
+  document.getElementById('upload-section').style.display='none';
+  document.getElementById('processing-section').style.display='block';
+
+  if(file.type.startsWith('image/')){
+    var r=new FileReader();
+    r.onload=function(e){document.getElementById('img-preview-wrap').innerHTML='<img class="img-preview" src="'+e.target.result+'">';};
+    r.readAsDataURL(file);
+  }
+
+  var steps=['step1','step2','step3','step4'];
+  var msgs=['Reading your document...','Extracting vendor, TIN, amounts...','Checking vendor database...','Done!'];
+  advStep(steps,0,document.getElementById('proc-text'),msgs[0]);
+
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b64=e.target.result.split(',')[1];
+    advStep(steps,1,document.getElementById('proc-text'),msgs[1]);
+
+    fetch('/api/extract-bill',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({file:b64,media_type:file.type||'image/jpeg'})
+    }).then(function(r){return r.json();}).then(function(res){
+      advStep(steps,2,document.getElementById('proc-text'),msgs[2]);
+      setTimeout(function(){
+        advStep(steps,3,document.getElementById('proc-text'),msgs[3]);
+        setTimeout(function(){showReview(res);},300);
+      },500);
+    }).catch(function(err){
+      document.getElementById('proc-status').className='status-bar status-error';
+      document.getElementById('proc-text').textContent='Error: '+err.message;
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
+function showReview(res){
+  document.getElementById('processing-section').style.display='none';
+  document.getElementById('review-section').style.display='block';
+
+  if(!res.ok){
+    document.getElementById('review-status').className='status-bar status-error';
+    document.getElementById('review-status').innerHTML='<span>Error: '+res.error+'</span>';
+    return;
+  }
+
+  extractedData=res.data;
+  vendorMatch=res.vendor_match;
+
+  document.getElementById('b-vendor').value=extractedData.vendor||'';
+  document.getElementById('b-invno').value=extractedData.invoice_number||'';
+  document.getElementById('b-date').value=extractedData.invoice_date||'';
+  document.getElementById('b-due').value=extractedData.due_date||'';
+  document.getElementById('b-tin').value=extractedData.tin||'';
+  document.getElementById('b-notes').value=extractedData.notes||'';
+
+  var curr=document.getElementById('b-currency');
+  if(extractedData.currency){for(var i=0;i<curr.options.length;i++){if(curr.options[i].value===extractedData.currency){curr.selectedIndex=i;break;}}}
+
+  var acct=document.getElementById('b-account');
+  if(extractedData.suggested_account){for(var j=0;j<acct.options.length;j++){if(acct.options[j].text===extractedData.suggested_account){acct.selectedIndex=j;break;}}}
+
+  if(!extractedData.tin){
+    document.getElementById('tin-warning').style.display='block';
+  }
+
+  if(!vendorMatch){
+    document.getElementById('new-vendor-card').style.display='block';
+    document.getElementById('v-name').value=extractedData.vendor||'';
+    document.getElementById('v-tin').value=extractedData.tin||'';
+  }
+
+  var items=extractedData.line_items||[];
+  document.getElementById('items-badge').textContent=items.length+' items extracted';
+  var tbody=document.getElementById('line-items-body');tbody.innerHTML='';
+  items.forEach(function(item){
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td><input class="field-input" value="'+esc(item.description)+'" style="width:100%"></td>'
+      +'<td><input class="field-input" value="'+(item.quantity||1)+'" style="width:52px"></td>'
+      +'<td><input class="field-input" value="'+fmt(item.unit_price)+'" style="width:90px"></td>'
+      +'<td style="text-align:right;font-weight:500">'+fmt(item.total)+'</td>';
+    tbody.appendChild(tr);
+  });
+
+  var tot=document.getElementById('bill-totals');tot.innerHTML='';
+  if(extractedData.subtotal!=null)tot.innerHTML+='<div style="display:flex;gap:40px"><span style="color:#888">Subtotal</span><span>'+fmt(extractedData.subtotal)+'</span></div>';
+  if(extractedData.tax!=null)tot.innerHTML+='<div style="display:flex;gap:40px"><span style="color:#888">Tax</span><span>'+fmt(extractedData.tax)+'</span></div>';
+  if(extractedData.total!=null)tot.innerHTML+='<div style="display:flex;gap:40px;font-weight:500;font-size:14px"><span>Total</span><span>'+fmt(extractedData.total)+'</span></div>';
+}
+
+function selectMiraTin(val){
+  if(val){
+    document.getElementById('manual-tin').value=val;
+    document.getElementById('b-tin').value=val;
+  }
+}
+
+function toggleTinExempt(checked){
+  tinExempt=checked;
+  document.getElementById('manual-tin').disabled=checked;
+  document.getElementById('b-tin').value=checked?'EXEMPT':'';
+  if(document.getElementById('mira-tin-select'))document.getElementById('mira-tin-select').disabled=checked;
+}
+
+function postBill(){
+  var tin=document.getElementById('b-tin').value.trim();
+  var manualTin=document.getElementById('manual-tin').value.trim();
+  if(manualTin)tin=manualTin;
+
+  if(!tin&&!tinExempt){
+    alert('Please enter a TIN number or mark this supplier as TIN-exempt before posting.');
+    return;
+  }
+
+  var btn=document.getElementById('post-btn');
+  btn.disabled=true;btn.textContent='Posting...';
+
+  var payload={
+    vendor_id:vendorMatch?vendorMatch.id:null,
+    vendor_name:document.getElementById('b-vendor').value,
+    tin:tin,
+    tin_exempt:tinExempt,
+    invoice_number:document.getElementById('b-invno').value,
+    invoice_date:document.getElementById('b-date').value,
+    due_date:document.getElementById('b-due').value,
+    currency:document.getElementById('b-currency').value,
+    account:document.getElementById('b-account').value,
+    notes:document.getElementById('b-notes').value,
+    subtotal:extractedData?extractedData.subtotal:0,
+    tax:extractedData?extractedData.tax:0,
+    total:extractedData?extractedData.total:0,
+    line_items:extractedData?extractedData.line_items:[]
+  };
+
+  if(!vendorMatch&&document.getElementById('new-vendor-card').style.display!=='none'){
+    payload.vendor_name=document.getElementById('v-name').value;
+    payload.tin=document.getElementById('v-tin').value||tin;
+  }
+
+  fetch('/api/post-bill',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(function(r){return r.json();}).then(function(res){
+    var bar=document.getElementById('review-status');
+    if(res.ok){
+      bar.className='status-bar status-success';
+      bar.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>'+res.message+'</span>';
+      btn.textContent='Posted';
+    } else {
+      bar.className='status-bar status-error';
+      bar.innerHTML='<span>Error: '+res.error+'</span>';
+      btn.disabled=false;btn.textContent='Post to QuickBooks + Save';
+    }
+  }).catch(function(err){
+    alert('Error: '+err.message);
+    btn.disabled=false;btn.textContent='Post to QuickBooks + Save';
+  });
+}
+
+function resetForm(){
+  extractedData=null;vendorMatch=null;tinExempt=false;
+  document.getElementById('upload-section').style.display='block';
+  document.getElementById('processing-section').style.display='none';
+  document.getElementById('review-section').style.display='none';
+  document.getElementById('tin-warning').style.display='none';
+  document.getElementById('new-vendor-card').style.display='none';
+  document.getElementById('img-preview-wrap').innerHTML='';
+  document.getElementById('line-items-body').innerHTML='';
+  document.getElementById('bill-totals').innerHTML='';
+  document.getElementById('bill-file').value='';
+  document.getElementById('post-btn').disabled=false;
+  document.getElementById('post-btn').textContent='Post to QuickBooks + Save';
+  var steps=['step1','step2','step3','step4'];
+  steps.forEach(function(id,i){var el=document.getElementById(id);if(el){el.className='step';el.querySelector('.step-dot').textContent=i+1;}});
+  document.getElementById('review-status').className='status-bar status-success';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title">Welcome back, {{ user.name.split()[0] }}</h1>
+  <p class="page-sub">{{ user.company or 'Your business' }} · {{ user.country }}</p>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total bills</div>
+      <div class="stat-value">{{ bill_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Posted to QB</div>
+      <div class="stat-value">{{ posted_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Vendors</div>
+      <div class="stat-value">{{ vendor_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total processed</div>
+      <div class="stat-value" style="font-size:18px">{{ "%.0f"|format(total_amount) }}</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <a href="/bills" class="card" style="text-decoration:none;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#93c5fd'" onmouseout="this.style.borderColor='#e5e5e0'">
+      <div class="card-title">Scan a bill</div>
+      <p style="font-size:13px;color:#666;line-height:1.6">Upload a bill photo or PDF. Claude AI extracts vendor, TIN, amounts and line items automatically.</p>
+      <div style="margin-top:12px"><span class="btn btn-primary btn-sm">Start scanning</span></div>
+    </a>
+    <a href="/bank" class="card" style="text-decoration:none;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='#93c5fd'" onmouseout="this.style.borderColor='#e5e5e0'">
+      <div class="card-title">Upload bank statement</div>
+      <p style="font-size:13px;color:#666;line-height:1.6">Upload your bank statement PDF. AI extracts every transaction and suggests QB account categories.</p>
+      <div style="margin-top:12px"><span class="btn btn-sm">Upload statement</span></div>
+    </a>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      Recent bills
+      <a href="/bills" class="btn btn-sm">View all</a>
+    </div>
+    {% if recent_bills %}
+    <table class="table">
+      <thead><tr><th>Vendor</th><th>Invoice</th><th>Date</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for bill in recent_bills %}
+        <tr>
+          <td>{{ bill.vendor.name if bill.vendor else '—' }}</td>
+          <td style="color:#666">{{ bill.invoice_number or '—' }}</td>
+          <td style="color:#666">{{ bill.invoice_date.strftime('%d %b %Y') if bill.invoice_date else '—' }}</td>
+          <td style="font-weight:500">{{ bill.currency }} {{ "%.2f"|format(bill.total) }}</td>
+          <td>
+            {% if bill.status == 'posted' %}
+              <span class="badge badge-green">Posted to QB</span>
+            {% elif bill.status == 'saved' %}
+              <span class="badge badge-blue">Saved</span>
+            {% else %}
+              <span class="badge badge-gray">Draft</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#888;font-size:13px;text-align:center;padding:24px 0">No bills yet — scan your first bill to get started</p>
+    {% endif %}
+  </div>
+
+  {% if not user.qb_access_token %}
+  <div class="alert alert-warn">
+    QuickBooks not connected — bills will be saved to Entrix only.
+    <a href="/settings" style="margin-left:8px;font-weight:500">Connect QuickBooks</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

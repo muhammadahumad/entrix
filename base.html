@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Entrix{% endblock %}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#1a1a1a;background:#f5f5f3;min-height:100vh}
+a{color:#2563eb;text-decoration:none}
+a:hover{text-decoration:underline}
+.nav{background:#fff;border-bottom:1px solid #e5e5e0;padding:0 24px;display:flex;align-items:center;gap:0;height:56px}
+.nav-brand{font-size:18px;font-weight:600;color:#1a1a1a;margin-right:32px;text-decoration:none}
+.nav-brand span{color:#2563eb}
+.nav-link{padding:0 14px;height:56px;display:flex;align-items:center;font-size:13px;font-weight:500;color:#666;border-bottom:2px solid transparent;text-decoration:none;transition:all .15s}
+.nav-link:hover{color:#1a1a1a;text-decoration:none}
+.nav-link.active{color:#2563eb;border-bottom-color:#2563eb}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px;color:#666}
+.container{max-width:960px;margin:0 auto;padding:32px 24px}
+.page-title{font-size:22px;font-weight:500;margin-bottom:4px}
+.page-sub{font-size:13px;color:#666;margin-bottom:28px}
+.card{background:#fff;border:1px solid #e5e5e0;border-radius:12px;padding:20px 24px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:500;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid #d0d0c8;background:#fff;color:#1a1a1a;transition:all .15s;text-decoration:none}
+.btn:hover{background:#f5f5f3;text-decoration:none}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a}
+.btn-primary:hover{opacity:.85;background:#1a1a1a;color:#fff}
+.btn-success{background:#f0fdf4;color:#15803d;border-color:#86efac}
+.btn-success:hover{background:#dcfce7}
+.btn-danger{background:#fef2f2;color:#dc2626;border-color:#fca5a5}
+.btn-danger:hover{background:#fee2e2}
+.btn-sm{padding:5px 12px;font-size:12px}
+.field-label{font-size:11px;color:#888;margin-bottom:4px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.field-input{width:100%;padding:8px 10px;border:1px solid #d0d0c8;border-radius:6px;font-size:13px;color:#1a1a1a;background:#fff;font-family:inherit}
+.field-input:focus{outline:none;border-color:#93c5fd;box-shadow:0 0 0 3px rgba(147,197,253,.2)}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.field-row.triple{grid-template-columns:1fr 1fr 1fr}
+.field-group{margin-bottom:14px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-blue{background:#eff6ff;color:#1d4ed8}
+.badge-green{background:#f0fdf4;color:#15803d}
+.badge-amber{background:#fffbeb;color:#b45309}
+.badge-red{background:#fef2f2;color:#dc2626}
+.badge-gray{background:#f5f5f3;color:#666}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.alert-success{background:#f0fdf4;color:#15803d;border:1px solid #86efac}
+.alert-error{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+.alert-info{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.alert-warn{background:#fffbeb;color:#b45309;border:1px solid #fcd34d}
+.spinner{width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{text-align:left;color:#888;font-weight:500;padding:8px 10px;border-bottom:1px solid #e5e5e0;font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.table td{padding:10px 10px;border-bottom:1px solid #f0f0ea}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:#fafaf8}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stat-card{background:#fff;border:1px solid #e5e5e0;border-radius:10px;padding:16px}
+.stat-label{font-size:11px;color:#888;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.stat-value{font-size:24px;font-weight:500}
+.upload-zone{border:1px dashed #c0c0b8;border-radius:12px;padding:32px 24px;text-align:center;cursor:pointer;transition:background .15s;background:#fff}
+.upload-zone:hover,.upload-zone.drag{background:#eff6ff;border-color:#93c5fd}
+.processing{display:none}
+.status-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+.status-processing{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}
+.status-success{background:#f0fdf4;color:#15803d;border:1px solid #86efac}
+.status-error{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5}
+.status-warn{background:#fffbeb;color:#b45309;border:1px solid #fcd34d}
+.progress-steps{display:flex;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:4px}
+.step{display:flex;align-items:center;gap:6px;font-size:12px;color:#aaa}
+.step.done{color:#15803d}.step.active{color:#2563eb;font-weight:500}
+.step-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;border:1px solid currentColor}
+.step-line{flex:1;min-width:16px;height:1px;background:#e0e0da}
+.tin-warning{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:14px}
+.tin-warning-title{font-size:13px;font-weight:500;color:#b45309;margin-bottom:8px}
+.select-input{width:100%;padding:8px 10px;border:1px solid #d0d0c8;border-radius:6px;font-size:13px;color:#1a1a1a;background:#fff}
+.img-preview{width:100%;max-height:180px;object-fit:contain;border-radius:8px;border:1px solid #e5e5e0;margin-bottom:12px}
+.line-item-table{width:100%;border-collapse:collapse;font-size:12px}
+.line-item-table th{text-align:left;color:#888;font-weight:500;padding:6px 8px;border-bottom:1px solid #e5e5e0}
+.line-item-table td{padding:6px 8px;border-bottom:1px solid #f0f0ea}
+.totals{display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:13px;border-top:1px solid #e5e5e0;margin-top:10px;padding-top:10px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:640px){.stat-grid{grid-template-columns:1fr 1fr}.field-row{grid-template-columns:1fr}.field-row.triple{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+{% if session.user_id %}
+<nav class="nav">
+  <a href="/dashboard" class="nav-brand">En<span>trix</span></a>
+  <a href="/dashboard" class="nav-link {% if request.path == '/dashboard' %}active{% endif %}">Dashboard</a>
+  <a href="/bills" class="nav-link {% if request.path == '/bills' %}active{% endif %}">Bills</a>
+  <a href="/bank" class="nav-link {% if request.path == '/bank' %}active{% endif %}">Bank</a>
+  <a href="/vendors" class="nav-link {% if request.path == '/vendors' %}active{% endif %}">Vendors</a>
+  <a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}">Settings</a>
+  <div class="nav-right">
+    <span>{{ session.get('user_name', '') }}</span>
+    <a href="/logout" class="btn btn-sm">Sign out</a>
+  </div>
+</nav>
+{% endif %}
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div style="max-width:960px;margin:16px auto;padding:0 24px">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'error' if category == 'error' else 'info' }}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block content %}{% endblock %}
+
+<script>
+function fmt(n){return n!=null?parseFloat(n).toFixed(2):'0.00';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function advStep(steps,i,el,msg){
+  if(i>0){var p=document.getElementById(steps[i-1]);if(p){p.classList.remove('active');p.classList.add('done');p.querySelector('.step-dot').innerHTML='&#10003;';}}
+  if(i<steps.length){var s=document.getElementById(steps[i]);if(s){s.classList.add('active');if(el&&msg)el.textContent=msg;}}
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

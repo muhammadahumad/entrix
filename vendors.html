@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Vendors — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title">Vendor database</h1>
+  <p class="page-sub">All your suppliers with TIN numbers — auto-matched when scanning bills</p>
+
+  <div class="card">
+    {% if vendors %}
+    <table class="table">
+      <thead><tr><th>Vendor name</th><th>TIN number</th><th>Currency</th><th>Terms</th><th>Bills</th><th>QB</th></tr></thead>
+      <tbody>
+        {% for v in vendors %}
+        <tr>
+          <td style="font-weight:500">{{ v.name }}</td>
+          <td>
+            {% if v.tin_exempt %}
+              <span class="badge badge-amber">TIN exempt</span>
+            {% elif v.tin %}
+              <span style="font-family:monospace;font-size:12px">{{ v.tin }}</span>
+            {% else %}
+              <span class="badge badge-red">Missing TIN</span>
+            {% endif %}
+          </td>
+          <td style="color:#666">{{ v.currency }}</td>
+          <td style="color:#666">{{ v.payment_terms }}</td>
+          <td style="color:#666">{{ v.bills|length }}</td>
+          <td>
+            {% if v.qb_vendor_id %}
+              <span class="badge badge-green">Synced</span>
+            {% else %}
+              <span class="badge badge-gray">Not synced</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#888;font-size:13px;text-align:center;padding:32px 0">No vendors yet — they are created automatically when you scan your first bill</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
