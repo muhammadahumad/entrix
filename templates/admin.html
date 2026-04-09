@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Admin — Entrix{% endblock %}
+{% block content %}
+<div class="container" style="max-width:1100px">
+  <h1 class="page-title">Admin panel</h1>
+  <p class="page-sub">Manage users, plans and upgrade requests</p>
+
+  <div class="stat-grid" style="grid-template-columns:repeat(5,1fr)">
+    <div class="stat-card">
+      <div class="stat-label">Total users</div>
+      <div class="stat-value">{{ stats.total_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Free plan</div>
+      <div class="stat-value">{{ stats.free_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Starter</div>
+      <div class="stat-value">{{ stats.starter_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Business</div>
+      <div class="stat-value">{{ stats.business_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total bills</div>
+      <div class="stat-value">{{ stats.total_bills }}</div>
+    </div>
+  </div>
+
+  {% if upgrade_requests %}
+  <div class="card" style="border-color:#fcd34d">
+    <div class="card-title">Upgrade requests <span class="badge badge-amber">{{ upgrade_requests|length }} pending</span></div>
+    <table class="table">
+      <thead><tr><th>User</th><th>Email</th><th>Requested plan</th><th>Current plan</th><th>Requested</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for req in upgrade_requests %}
+        <tr>
+          <td style="font-weight:500">{{ req.name }}</td>
+          <td style="color:#666">{{ req.email }}</td>
+          <td><span class="badge badge-blue">{{ req.requested_plan }}</span></td>
+          <td><span class="badge badge-gray">{{ req.current_plan }}</span></td>
+          <td style="color:#666;font-size:12px">{{ req.requested_at }}</td>
+          <td>
+            <button class="btn btn-sm btn-success" onclick="upgradePlan({{ req.user_id }}, '{{ req.requested_plan }}', this)">Activate</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-title">All users</div>
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Plan</th><th>Scans</th><th>Bills</th><th>QB</th><th>Joined</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td style="font-weight:500">{{ u.name }}</td>
+          <td style="color:#666;font-size:12px">{{ u.email }}</td>
+          <td style="color:#666;font-size:12px">{{ u.company or '—' }}</td>
+          <td>
+            <select class="select-input" style="font-size:12px;padding:3px 6px;width:90px" onchange="upgradePlan({{ u.id }}, this.value, this)">
+              <option value="free" {% if u.plan == 'free' %}selected{% endif %}>Free</option>
+              <option value="starter" {% if u.plan == 'starter' %}selected{% endif %}>Starter</option>
+              <option value="business" {% if u.plan == 'business' %}selected{% endif %}>Business</option>
+            </select>
+          </td>
+          <td style="color:#666">{{ u.scans_this_month or 0 }}</td>
+          <td style="color:#666">{{ u.bill_count }}</td>
+          <td>
+            {% if u.qb_connected %}
+              <span class="badge badge-green">Connected</span>
+            {% else %}
+              <span class="badge badge-gray">No</span>
+            {% endif %}
+          </td>
+          <td style="color:#666;font-size:12px">{{ u.created_at.strftime('%d %b %Y') }}</td>
+          <td>
+            <button class="btn btn-sm" onclick="sendWelcome('{{ u.email }}')">Email</button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function upgradePlan(userId, plan, el){
+  if(!confirm('Change user plan to ' + plan + '?')){
+    if(el.tagName==='SELECT') el.value = el.dataset.original || 'free';
+    return;
+  }
+  fetch('/admin/api/upgrade',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({user_id:userId, plan:plan})
+  }).then(r=>r.json()).then(res=>{
+    if(res.ok){
+      alert('Plan updated to ' + plan);
+      location.reload();
+    } else {
+      alert('Error: ' + res.error);
+    }
+  });
+}
+
+function sendWelcome(email){
+  alert('Email feature coming soon — contact ' + email + ' manually for now.');
+}
+</script>
+{% endblock %}

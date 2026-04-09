@@ -27,9 +27,40 @@
       <a href="/qb/disconnect" class="btn btn-danger btn-sm">Disconnect QuickBooks</a>
     {% else %}
       <div class="alert alert-warn" style="margin-bottom:14px">
-        Not connected — bills will be saved to Entrix only. Connect to post directly to QuickBooks.
+        Not connected — bills will be saved to Entrix only.
       </div>
-      <a href="/qb/connect" class="btn btn-primary">Connect QuickBooks Online</a>
+      <a href="/qb/connect" class="btn btn-primary" style="margin-bottom:16px">Connect QuickBooks Online</a>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e5e0">
+        <div style="font-size:13px;font-weight:500;color:#666;margin-bottom:8px">Manual token entry (if OAuth redirect fails)</div>
+        <p style="font-size:12px;color:#888;margin-bottom:12px">
+          Get tokens from the <a href="https://developer.intuit.com/app/developer/playground" target="_blank">Intuit OAuth Playground</a>, then paste them below.
+        </p>
+        <form method="POST" action="/qb/manual">
+          <div class="field-group">
+            <div class="field-label">Access Token</div>
+            <input class="field-input" name="access_token" placeholder="eyJhbGci..." required>
+          </div>
+          <div class="field-group">
+            <div class="field-label">Refresh Token</div>
+            <input class="field-input" name="refresh_token" placeholder="RT1-..." required>
+          </div>
+          <div class="field-row">
+            <div>
+              <div class="field-label">Realm ID (Company ID)</div>
+              <input class="field-input" name="realm_id" placeholder="9341456825939428" required>
+            </div>
+            <div>
+              <div class="field-label">Environment</div>
+              <select class="select-input" name="environment">
+                <option value="sandbox">Sandbox (testing)</option>
+                <option value="production">Production (live)</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Save QB tokens</button>
+        </form>
+      </div>
     {% endif %}
   </div>
 
@@ -38,7 +69,14 @@
     <div class="alert alert-success">
       Claude AI configured — real document extraction active
     </div>
-    <p style="font-size:12px;color:#666">Every bill and bank statement you upload is read by real AI. Approximately 500 scans per $5 of API credit.</p>
+    <p style="font-size:12px;color:#666">Every bill and bank statement you upload is read by real AI.</p>
   </div>
+
+  {% if user.email == 'muahumadhu@gmail.com' %}
+  <div class="card" style="border-color:#2563eb">
+    <div class="card-title">Admin <span class="badge badge-blue">Owner</span></div>
+    <a href="/admin" class="btn btn-primary">Open admin panel</a>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}
