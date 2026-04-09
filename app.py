@@ -234,7 +234,7 @@ def post_bill_to_qb(user, bill, vendor):
         'DocNumber': bill.invoice_number or '',
         'PrivateNote': bill.notes or '',
         'Line': lines,
-        'CurrencyRef': {'value': bill.currency or 'USD'}
+        'CurrencyRef': {'value': 'USD'}
     }
  
     if bill.due_date:
