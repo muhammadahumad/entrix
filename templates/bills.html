@@ -346,16 +346,18 @@ function exportExcel(){
   var d=getExportData();
   var wb=XLSX.utils.book_new();
   var rows=[
-    ['ENTRIX BILL EXPORT'],[],
+    ['ENTRIX BILL EXPORT'],[''],
     ['Vendor',d.vendor],['Invoice Number',d.invno],['Invoice Date',d.date],
     ['Due Date',d.due],['Currency',d.currency],['TIN Number',d.tin],
-    ['QB Account',d.account],['Notes',d.notes],[],
-    ['Subtotal',d.subtotal],['Tax',d.tax],['TOTAL',d.total]
+    ['QB Account',d.account],['Notes',d.notes],[''],
+    ['Subtotal',String(d.subtotal)],['Tax',String(d.tax)],['TOTAL',String(d.total)]
   ];
   if(d.items.length){
-    rows.push([]);rows.push(['LINE ITEMS']);
+    rows.push(['']);rows.push(['LINE ITEMS']);
     rows.push(['Description','Quantity','Unit Price','Total']);
-    d.items.forEach(function(item){rows.push([item.description,item.quantity||1,item.unit_price||0,item.total||0]);});
+    d.items.forEach(function(item){
+      rows.push([String(item.description||''),String(item.quantity||1),String(item.unit_price||0),String(item.total||0)]);
+    });
   }
   var ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:20},{wch:30}];
