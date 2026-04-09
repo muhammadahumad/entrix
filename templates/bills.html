@@ -37,7 +37,6 @@
       <span>AI extraction complete — review and confirm before posting</span>
     </div>
 
-    <!-- TIN Warning Block -->
     <div id="tin-warning" class="tin-warning" style="display:none">
       <div class="tin-warning-title">TIN number not found on this document</div>
       <p style="font-size:12px;color:#92400e;margin-bottom:10px">A TIN number is required for tax compliance. Please enter it manually or select a MIRA sample TIN.</p>
@@ -60,11 +59,10 @@
       </div>
       <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-top:4px">
         <input type="checkbox" id="tin-exempt-check" onchange="toggleTinExempt(this.checked)">
-        This supplier has no TIN — mark as exempt (informal/unregistered supplier)
+        This supplier has no TIN — mark as exempt
       </label>
     </div>
 
-    <!-- Vendor Block -->
     <div id="new-vendor-card" class="card" style="display:none">
       <div class="card-title">New vendor detected <span class="badge badge-amber">Not in your database</span></div>
       <div class="field-row">
@@ -86,7 +84,6 @@
       </div>
     </div>
 
-    <!-- Bill Details -->
     <div class="card">
       <div class="card-title">Bill details <span class="badge badge-blue">AI extracted</span></div>
       <div class="field-row">
@@ -118,7 +115,6 @@
       </div>
     </div>
 
-    <!-- Line Items -->
     <div class="card">
       <div class="card-title">Line items <span class="badge badge-blue" id="items-badge">extracted</span></div>
       <table class="line-item-table">
@@ -135,8 +131,8 @@
         <a href="/pricing" class="btn btn-primary">Upgrade for QB posting</a>
         <button class="btn" onclick="resetForm()">Scan another</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span style="font-size:12px;color:#888;line-height:32px">Export:</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;color:#888">Export:</span>
         <button class="btn btn-sm" onclick="exportCSV()">CSV</button>
         <button class="btn btn-sm" onclick="exportExcel()">Excel</button>
         <button class="btn btn-sm" onclick="exportPDF()">PDF</button>
@@ -146,8 +142,8 @@
         <button class="btn btn-success" id="post-btn" onclick="postBill()">Post to QuickBooks + Save</button>
         <button class="btn" onclick="resetForm()">Scan another</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span style="font-size:12px;color:#888;line-height:32px">Export:</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;color:#888">Export:</span>
         <button class="btn btn-sm" onclick="exportCSV()">CSV</button>
         <button class="btn btn-sm" onclick="exportExcel()">Excel</button>
         <button class="btn btn-sm" onclick="exportPDF()">PDF</button>
@@ -166,29 +162,25 @@ var vendorMatch = null;
 var miraTins = {{ mira_tins|tojson }};
 var tinExempt = false;
 
-function ev(e, on){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',on);}
+function ev(e,on){e.preventDefault();document.getElementById('drop-zone').classList.toggle('drag',on);}
 function dropFile(e){e.preventDefault();document.getElementById('drop-zone').classList.remove('drag');if(e.dataTransfer.files.length)processFile(e.dataTransfer.files[0]);}
 function handleFile(input){if(input.files.length)processFile(input.files[0]);}
 
 function processFile(file){
   document.getElementById('upload-section').style.display='none';
   document.getElementById('processing-section').style.display='block';
-
   if(file.type.startsWith('image/')){
     var r=new FileReader();
     r.onload=function(e){document.getElementById('img-preview-wrap').innerHTML='<img class="img-preview" src="'+e.target.result+'">';};
     r.readAsDataURL(file);
   }
-
   var steps=['step1','step2','step3','step4'];
   var msgs=['Reading your document...','Extracting vendor, TIN, amounts...','Checking vendor database...','Done!'];
   advStep(steps,0,document.getElementById('proc-text'),msgs[0]);
-
   var reader=new FileReader();
   reader.onload=function(e){
     var b64=e.target.result.split(',')[1];
     advStep(steps,1,document.getElementById('proc-text'),msgs[1]);
-
     fetch('/api/extract-bill',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -210,39 +202,34 @@ function processFile(file){
 function showReview(res){
   document.getElementById('processing-section').style.display='none';
   document.getElementById('review-section').style.display='block';
-
   if(!res.ok){
-    document.getElementById('review-status').className='status-bar status-error';
-    document.getElementById('review-status').innerHTML='<span>Error: '+res.error+'</span>';
+    var bar=document.getElementById('review-status');
+    bar.className='status-bar status-error';
+    if(res.upgrade){
+      bar.innerHTML='<span>'+res.error+' <a href="/pricing" style="font-weight:500;color:#dc2626">Upgrade plan</a></span>';
+    } else {
+      bar.innerHTML='<span>Error: '+res.error+'</span>';
+    }
     return;
   }
-
   extractedData=res.data;
   vendorMatch=res.vendor_match;
-
   document.getElementById('b-vendor').value=extractedData.vendor||'';
   document.getElementById('b-invno').value=extractedData.invoice_number||'';
   document.getElementById('b-date').value=extractedData.invoice_date||'';
   document.getElementById('b-due').value=extractedData.due_date||'';
   document.getElementById('b-tin').value=extractedData.tin||'';
   document.getElementById('b-notes').value=extractedData.notes||'';
-
   var curr=document.getElementById('b-currency');
   if(extractedData.currency){for(var i=0;i<curr.options.length;i++){if(curr.options[i].value===extractedData.currency){curr.selectedIndex=i;break;}}}
-
   var acct=document.getElementById('b-account');
   if(extractedData.suggested_account){for(var j=0;j<acct.options.length;j++){if(acct.options[j].text===extractedData.suggested_account){acct.selectedIndex=j;break;}}}
-
-  if(!extractedData.tin){
-    document.getElementById('tin-warning').style.display='block';
-  }
-
+  if(!extractedData.tin){document.getElementById('tin-warning').style.display='block';}
   if(!vendorMatch){
     document.getElementById('new-vendor-card').style.display='block';
     document.getElementById('v-name').value=extractedData.vendor||'';
     document.getElementById('v-tin').value=extractedData.tin||'';
   }
-
   var items=extractedData.line_items||[];
   document.getElementById('items-badge').textContent=items.length+' items extracted';
   var tbody=document.getElementById('line-items-body');tbody.innerHTML='';
@@ -254,7 +241,6 @@ function showReview(res){
       +'<td style="text-align:right;font-weight:500">'+fmt(item.total)+'</td>';
     tbody.appendChild(tr);
   });
-
   var tot=document.getElementById('bill-totals');tot.innerHTML='';
   if(extractedData.subtotal!=null)tot.innerHTML+='<div style="display:flex;gap:40px"><span style="color:#888">Subtotal</span><span>'+fmt(extractedData.subtotal)+'</span></div>';
   if(extractedData.tax!=null)tot.innerHTML+='<div style="display:flex;gap:40px"><span style="color:#888">Tax</span><span>'+fmt(extractedData.tax)+'</span></div>';
@@ -262,10 +248,7 @@ function showReview(res){
 }
 
 function selectMiraTin(val){
-  if(val){
-    document.getElementById('manual-tin').value=val;
-    document.getElementById('b-tin').value=val;
-  }
+  if(val){document.getElementById('manual-tin').value=val;document.getElementById('b-tin').value=val;}
 }
 
 function toggleTinExempt(checked){
@@ -279,20 +262,13 @@ function postBill(){
   var tin=document.getElementById('b-tin').value.trim();
   var manualTin=document.getElementById('manual-tin').value.trim();
   if(manualTin)tin=manualTin;
-
-  if(!tin&&!tinExempt){
-    alert('Please enter a TIN number or mark this supplier as TIN-exempt before posting.');
-    return;
-  }
-
+  if(!tin&&!tinExempt){alert('Please enter a TIN number or mark this supplier as TIN-exempt before posting.');return;}
   var btn=document.getElementById('post-btn');
-  btn.disabled=true;btn.textContent='Posting...';
-
+  btn.disabled=true;btn.textContent='Saving...';
   var payload={
     vendor_id:vendorMatch?vendorMatch.id:null,
     vendor_name:document.getElementById('b-vendor').value,
-    tin:tin,
-    tin_exempt:tinExempt,
+    tin:tin,tin_exempt:tinExempt,
     invoice_number:document.getElementById('b-invno').value,
     invoice_date:document.getElementById('b-date').value,
     due_date:document.getElementById('b-due').value,
@@ -304,12 +280,10 @@ function postBill(){
     total:extractedData?extractedData.total:0,
     line_items:extractedData?extractedData.line_items:[]
   };
-
   if(!vendorMatch&&document.getElementById('new-vendor-card').style.display!=='none'){
     payload.vendor_name=document.getElementById('v-name').value;
     payload.tin=document.getElementById('v-tin').value||tin;
   }
-
   fetch('/api/post-bill',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
@@ -318,123 +292,99 @@ function postBill(){
     var bar=document.getElementById('review-status');
     if(res.ok){
       bar.className='status-bar status-success';
-      bar.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>'+res.message+'</span>';
-      btn.textContent='Posted';
+      bar.innerHTML='<span>'+res.message+'</span>';
+      btn.textContent='Saved';
     } else {
       bar.className='status-bar status-error';
       bar.innerHTML='<span>Error: '+res.error+'</span>';
-      btn.disabled=false;btn.textContent='Post to QuickBooks + Save';
+      btn.disabled=false;btn.textContent='Save to Entrix';
     }
   }).catch(function(err){
     alert('Error: '+err.message);
-    btn.disabled=false;btn.textContent='Post to QuickBooks + Save';
+    btn.disabled=false;btn.textContent='Save to Entrix';
   });
 }
 
-function toggleExportMenu(){
-  var m=document.getElementById('export-menu');
-  m.style.display=m.style.display==='none'?'block':'none';
-}
-document.addEventListener('click',function(e){
-  if(!e.target.closest('#export-menu')&&!e.target.textContent.includes('Export')){
-    var m=document.getElementById('export-menu');
-    if(m)m.style.display='none';
-  }
-});
-
 function getExportData(){
   return {
-    vendor: document.getElementById('b-vendor').value,
-    invno: document.getElementById('b-invno').value,
-    date: document.getElementById('b-date').value,
-    due: document.getElementById('b-due').value,
-    currency: document.getElementById('b-currency').value,
-    tin: document.getElementById('b-tin').value,
-    account: document.getElementById('b-account').value,
-    notes: document.getElementById('b-notes').value,
-    subtotal: extractedData?extractedData.subtotal||0:0,
-    tax: extractedData?extractedData.tax||0:0,
-    total: extractedData?extractedData.total||0:0,
-    items: extractedData?extractedData.line_items||[]:[]
+    vendor:document.getElementById('b-vendor').value,
+    invno:document.getElementById('b-invno').value,
+    date:document.getElementById('b-date').value,
+    due:document.getElementById('b-due').value,
+    currency:document.getElementById('b-currency').value,
+    tin:document.getElementById('b-tin').value,
+    account:document.getElementById('b-account').value,
+    notes:document.getElementById('b-notes').value,
+    subtotal:extractedData?extractedData.subtotal||0:0,
+    tax:extractedData?extractedData.tax||0:0,
+    total:extractedData?extractedData.total||0:0,
+    items:extractedData?extractedData.line_items||[]:[]
   };
+}
+
+function exportCSV(){
+  if(!extractedData){alert('No data to export');return;}
+  var d=getExportData();
+  var rows=[['Vendor','Invoice Number','Invoice Date','Due Date','Currency','TIN','Account','Subtotal','Tax','Total','Notes']];
+  rows.push([d.vendor,d.invno,d.date,d.due,d.currency,d.tin,d.account,d.subtotal,d.tax,d.total,d.notes]);
+  if(d.items.length){
+    rows.push([]);
+    rows.push(['Description','Quantity','Unit Price','Total']);
+    d.items.forEach(function(item){rows.push([item.description,item.quantity||1,item.unit_price||0,item.total||0]);});
+  }
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+(c+'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');a.href=url;a.download='entrix-bill-'+(d.invno||'export')+'.csv';a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('review-status').innerHTML='<span>CSV exported!</span>';
 }
 
 function exportExcel(){
   if(!extractedData){alert('No data to export');return;}
+  if(typeof XLSX==='undefined'){alert('Excel library not loaded yet. Please wait a moment and try again.');return;}
   var d=getExportData();
   var wb=XLSX.utils.book_new();
-
-  var summaryData=[
-    ['ENTRIX BILL EXPORT'],
-    [],
-    ['Vendor',d.vendor],
-    ['Invoice Number',d.invno],
-    ['Invoice Date',d.date],
-    ['Due Date',d.due],
-    ['Currency',d.currency],
-    ['TIN Number',d.tin],
-    ['QB Account',d.account],
-    ['Notes',d.notes],
-    [],
-    ['Subtotal',d.subtotal],
-    ['Tax',d.tax],
-    ['TOTAL',d.total]
+  var rows=[
+    ['ENTRIX BILL EXPORT'],[],
+    ['Vendor',d.vendor],['Invoice Number',d.invno],['Invoice Date',d.date],
+    ['Due Date',d.due],['Currency',d.currency],['TIN Number',d.tin],
+    ['QB Account',d.account],['Notes',d.notes],[],
+    ['Subtotal',d.subtotal],['Tax',d.tax],['TOTAL',d.total]
   ];
-
   if(d.items.length){
-    summaryData.push([]);
-    summaryData.push(['LINE ITEMS']);
-    summaryData.push(['Description','Quantity','Unit Price','Total']);
-    d.items.forEach(function(item){
-      summaryData.push([item.description,item.quantity||1,item.unit_price||0,item.total||0]);
-    });
+    rows.push([]);rows.push(['LINE ITEMS']);
+    rows.push(['Description','Quantity','Unit Price','Total']);
+    d.items.forEach(function(item){rows.push([item.description,item.quantity||1,item.unit_price||0,item.total||0]);});
   }
-
-  var ws=XLSX.utils.aoa_to_sheet(summaryData);
+  var ws=XLSX.utils.aoa_to_sheet(rows);
   ws['!cols']=[{wch:20},{wch:30}];
   XLSX.utils.book_append_sheet(wb,'Bill',ws);
   XLSX.writeFile(wb,'entrix-bill-'+(d.invno||'export')+'.xlsx');
-
-  var bar=document.getElementById('review-status');
-  bar.className='status-bar status-success';
-  bar.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>Excel file exported!</span>';
+  document.getElementById('review-status').innerHTML='<span>Excel exported!</span>';
 }
 
 function exportPDF(){
   if(!extractedData){alert('No data to export');return;}
   var d=getExportData();
-  var html='<html><head><style>body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:32px}h1{font-size:20px;margin-bottom:4px}h2{font-size:14px;color:#666;font-weight:normal;margin-bottom:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 32px;margin-bottom:20px}.label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.04em}.value{font-weight:500}table{width:100%;border-collapse:collapse;margin-top:16px}th{text-align:left;padding:8px;background:#f5f5f3;font-size:11px;text-transform:uppercase;letter-spacing:.04em}td{padding:8px;border-bottom:1px solid #f0f0ea}.totals{text-align:right;margin-top:12px}.total-row{display:flex;justify-content:flex-end;gap:40px;padding:4px 0}.total-final{font-weight:600;font-size:15px;border-top:1px solid #e0e0da;margin-top:4px;padding-top:8px}footer{margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #f0f0ea;padding-top:12px}</style></head><body>';
-  html+='<h1>Bill / Invoice</h1><h2>Exported from Entrix</h2>';
-  html+='<div class="grid">';
+  var html='<html><head><style>body{font-family:Arial,sans-serif;font-size:13px;padding:32px}h1{font-size:20px;margin-bottom:4px}h2{font-size:14px;color:#666;font-weight:normal;margin-bottom:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 32px;margin-bottom:20px}.label{font-size:11px;color:#888;text-transform:uppercase}.value{font-weight:500}table{width:100%;border-collapse:collapse;margin-top:16px}th{text-align:left;padding:8px;background:#f5f5f3;font-size:11px;text-transform:uppercase}td{padding:8px;border-bottom:1px solid #f0f0ea}.totals{text-align:right;margin-top:12px}.tr{display:flex;justify-content:flex-end;gap:40px;padding:4px 0}.tf{font-weight:600;font-size:15px;border-top:1px solid #e0e0da;margin-top:4px;padding-top:8px}footer{margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #f0f0ea;padding-top:12px}</style></head><body>';
+  html+='<h1>Bill / Invoice</h1><h2>Exported from Entrix</h2><div class="grid">';
   html+='<div><div class="label">Vendor</div><div class="value">'+d.vendor+'</div></div>';
   html+='<div><div class="label">Invoice Number</div><div class="value">'+d.invno+'</div></div>';
   html+='<div><div class="label">Invoice Date</div><div class="value">'+d.date+'</div></div>';
-  html+='<div><div class="label">Due Date</div><div class="value">'+(d.due||'—')+'</div></div>';
+  html+='<div><div class="label">Due Date</div><div class="value">'+(d.due||'--')+'</div></div>';
   html+='<div><div class="label">TIN Number</div><div class="value">'+d.tin+'</div></div>';
   html+='<div><div class="label">Currency</div><div class="value">'+d.currency+'</div></div>';
   html+='<div><div class="label">Account</div><div class="value">'+d.account+'</div></div>';
-  html+='<div><div class="label">Notes</div><div class="value">'+(d.notes||'—')+'</div></div>';
-  html+='</div>';
-
+  html+='<div><div class="label">Notes</div><div class="value">'+(d.notes||'--')+'</div></div></div>';
   if(d.items.length){
     html+='<table><thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>';
-    d.items.forEach(function(item){
-      html+='<tr><td>'+item.description+'</td><td>'+(item.quantity||1)+'</td><td>'+fmt(item.unit_price)+'</td><td style="text-align:right">'+fmt(item.total)+'</td></tr>';
-    });
+    d.items.forEach(function(item){html+='<tr><td>'+item.description+'</td><td>'+(item.quantity||1)+'</td><td>'+fmt(item.unit_price)+'</td><td style="text-align:right">'+fmt(item.total)+'</td></tr>';});
     html+='</tbody></table>';
   }
-
-  html+='<div class="totals">';
-  html+='<div class="total-row"><span style="color:#888">Subtotal</span><span>'+d.currency+' '+fmt(d.subtotal)+'</span></div>';
-  html+='<div class="total-row"><span style="color:#888">Tax</span><span>'+d.currency+' '+fmt(d.tax)+'</span></div>';
-  html+='<div class="total-row total-final"><span>Total</span><span>'+d.currency+' '+fmt(d.total)+'</span></div>';
-  html+='</div>';
-  html+='<footer>Generated by Entrix · entrix-production.up.railway.app · '+new Date().toLocaleDateString()+'</footer>';
-  html+='</body></html>';
-
-  var w=window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  html+='<div class="totals"><div class="tr"><span style="color:#888">Subtotal</span><span>'+d.currency+' '+fmt(d.subtotal)+'</span></div><div class="tr"><span style="color:#888">Tax</span><span>'+d.currency+' '+fmt(d.tax)+'</span></div><div class="tr tf"><span>Total</span><span>'+d.currency+' '+fmt(d.total)+'</span></div></div>';
+  html+='<footer>Generated by Entrix &middot; '+new Date().toLocaleDateString()+'</footer></body></html>';
+  var w=window.open('','_blank');w.document.write(html);w.document.close();
   setTimeout(function(){w.print();},500);
 }
 
@@ -449,48 +399,10 @@ function resetForm(){
   document.getElementById('line-items-body').innerHTML='';
   document.getElementById('bill-totals').innerHTML='';
   document.getElementById('bill-file').value='';
-  var pb=document.getElementById('post-btn');
-  if(pb){pb.disabled=false;}
+  var pb=document.getElementById('post-btn');if(pb){pb.disabled=false;}
   var steps=['step1','step2','step3','step4'];
   steps.forEach(function(id,i){var el=document.getElementById(id);if(el){el.className='step';el.querySelector('.step-dot').textContent=i+1;}});
   document.getElementById('review-status').className='status-bar status-success';
-}
-
-function exportCSV(){
-  if(!extractedData){alert('No data to export');return;}
-  var vendor=document.getElementById('b-vendor').value;
-  var invno=document.getElementById('b-invno').value;
-  var date=document.getElementById('b-date').value;
-  var due=document.getElementById('b-due').value;
-  var currency=document.getElementById('b-currency').value;
-  var tin=document.getElementById('b-tin').value;
-  var account=document.getElementById('b-account').value;
-  var notes=document.getElementById('b-notes').value;
-
-  var rows=[['Vendor','Invoice Number','Invoice Date','Due Date','Currency','TIN','Account','Subtotal','Tax','Total','Notes']];
-  rows.push([vendor,invno,date,due,currency,tin,account,
-    extractedData.subtotal||0,extractedData.tax||0,extractedData.total||0,notes]);
-
-  if(extractedData.line_items&&extractedData.line_items.length){
-    rows.push([]);
-    rows.push(['Description','Quantity','Unit Price','Total']);
-    extractedData.line_items.forEach(function(item){
-      rows.push([item.description,item.quantity||1,item.unit_price||0,item.total||0]);
-    });
-  }
-
-  var csv=rows.map(function(r){return r.map(function(c){return '"'+(c+'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');
-  var blob=new Blob([csv],{type:'text/csv'});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url;
-  a.download='entrix-bill-'+(invno||'export')+'.csv';
-  a.click();
-  URL.revokeObjectURL(url);
-
-  var bar=document.getElementById('review-status');
-  bar.className='status-bar status-success';
-  bar.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>CSV exported successfully!</span>';
 }
 </script>
 {% endblock %}
