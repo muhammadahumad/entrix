@@ -816,7 +816,12 @@ with app.app_context():
         pass
 
 
-
+@app.route('/api/request-upgrade', methods=['POST'])
+@login_required
+def api_request_upgrade():
+    user = current_user()
+    data = request.get_json()
+    plan = data.get('plan', 'starter')
 
     req = UpgradeRequest(
         user_id=user.id,
