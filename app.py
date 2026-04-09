@@ -775,6 +775,188 @@ def qb_disconnect():
     return redirect(url_for('settings'))
 
 
+@app.route('/qb/manual', methods=['POST'])
+@login_required
+def qb_manual():
+    user = current_user()
+    access_token = request.form.get('access_token', '').strip()
+    refresh_token = request.form.get('refresh_token', '').strip()
+    realm_id = request.form.get('realm_id', '').strip()
+    environment = request.form.get('environment', 'sandbox')
+
+    if not access_token or not refresh_token or not realm_id:
+        flash('Please fill in all QuickBooks token fields', 'error')
+        return redirect(url_for('settings'))
+
+    user.qb_access_token = access_token
+    user.qb_refresh_token = refresh_token
+    user.qb_realm_id = realm_id
+    user.qb_environment = environment
+    db.session.commit()
+    flash('QuickBooks tokens updated successfully!', 'success')
+    return redirect(url_for('settings'))
+
+
+# ── Upgrade request with email notification ───────────────────────────────────
+
+class UpgradeRequest(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    requested_plan = db.Column(db.String(20), nullable=False)
+    current_plan = db.Column(db.String(20))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    fulfilled = db.Column(db.Boolean, default=False)
+    user = db.relationship('User', backref='upgrade_requests')
+
+
+with app.app_context():
+    try:
+        db.create_all()
+    except:
+        pass
+
+
+@app.route('/api/request-upgrade', methods=['POST'])
+@login_required
+def api_request_upgrade():
+    user = current_user()
+    data = request.get_json()
+    plan = data.get('plan', 'starter')
+
+    req = UpgradeRequest(
+        user_id=user.id,
+        requested_plan=plan,
+        current_plan=user.plan
+    )
+    db.session.add(req)
+    db.session.commit()
+
+    send_upgrade_notification(user, plan)
+
+    return jsonify({
+        'ok': True,
+        'message': f'Upgrade request received for {plan.title()} plan. We will contact you at {user.email} within 24 hours with payment details.'
+    })
+
+
+def send_upgrade_notification(user, plan):
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'muahumadhu@gmail.com')
+    SENDGRID_KEY = os.environ.get('SENDGRID_KEY', '')
+
+    if not SENDGRID_KEY:
+        print(f'UPGRADE REQUEST: {user.name} ({user.email}) wants {plan} plan')
+        return
+
+    try:
+        body = json.dumps({
+            'personalizations': [{'to': [{'email': ADMIN_EMAIL}]}],
+            'from': {'email': 'noreply@entrix.app', 'name': 'Entrix'},
+            'subject': f'New upgrade request — {user.name} wants {plan.title()} plan',
+            'content': [{
+                'type': 'text/plain',
+                'value': f'User: {user.name}\nEmail: {user.email}\nCompany: {user.company}\nCurrent plan: {user.plan}\nRequested plan: {plan}\n\nLog in to admin panel to activate: https://entrix-production.up.railway.app/admin'
+            }]
+        }).encode()
+
+        req = urllib.request.Request(
+            'https://api.sendgrid.com/v3/mail/send',
+            data=body,
+            headers={
+                'Authorization': f'Bearer {SENDGRID_KEY}',
+                'Content-Type': 'application/json'
+            }
+        )
+        urllib.request.urlopen(req)
+    except Exception as e:
+        print(f'Email error: {e}')
+
+
+# ── Admin panel ───────────────────────────────────────────────────────────────
+
+ADMIN_EMAILS = ['muahumadhu@gmail.com']
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = current_user()
+        if not user or user.email not in ADMIN_EMAILS:
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/admin')
+@login_required
+@admin_required
+def admin():
+    users = User.query.order_by(User.created_at.desc()).all()
+    user_data = []
+    for u in users:
+        bill_count = Bill.query.filter_by(user_id=u.id).count()
+        user_data.append({
+            'id': u.id,
+            'name': u.name,
+            'email': u.email,
+            'company': u.company,
+            'plan': u.plan,
+            'scans_this_month': u.scans_this_month or 0,
+            'bill_count': bill_count,
+            'qb_connected': bool(u.qb_access_token and u.qb_realm_id),
+            'created_at': u.created_at
+        })
+
+    pending_requests = UpgradeRequest.query.filter_by(fulfilled=False).order_by(UpgradeRequest.created_at.desc()).all()
+    upgrade_requests = []
+    for r in pending_requests:
+        upgrade_requests.append({
+            'user_id': r.user_id,
+            'name': r.user.name,
+            'email': r.user.email,
+            'requested_plan': r.requested_plan,
+            'current_plan': r.current_plan,
+            'requested_at': r.created_at.strftime('%d %b %Y %H:%M')
+        })
+
+    total_bills = Bill.query.count()
+    stats = {
+        'total_users': len(users),
+        'free_users': sum(1 for u in users if u.plan == 'free'),
+        'starter_users': sum(1 for u in users if u.plan == 'starter'),
+        'business_users': sum(1 for u in users if u.plan == 'business'),
+        'total_bills': total_bills
+    }
+
+    return render_template('admin.html', users=user_data, stats=stats,
+                           upgrade_requests=upgrade_requests)
+
+
+@app.route('/admin/api/upgrade', methods=['POST'])
+@login_required
+@admin_required
+def admin_upgrade():
+    data = request.get_json()
+    user_id = data.get('user_id')
+    plan = data.get('plan')
+
+    if plan not in PLANS:
+        return jsonify({'ok': False, 'error': 'Invalid plan'})
+
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'ok': False, 'error': 'User not found'})
+
+    user.plan = plan
+    user.plan_activated_at = datetime.utcnow()
+
+    pending = UpgradeRequest.query.filter_by(user_id=user_id, fulfilled=False).all()
+    for r in pending:
+        r.fulfilled = True
+
+    db.session.commit()
+    return jsonify({'ok': True, 'message': f'Plan updated to {plan}'})
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
