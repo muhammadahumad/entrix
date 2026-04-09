@@ -697,16 +697,6 @@ def api_status():
     })
 
 
-@app.route('/api/request-upgrade', methods=['POST'])
-@login_required
-def api_request_upgrade():
-    user = current_user()
-    data = request.get_json()
-    plan = data.get('plan', 'starter')
-    print(f'UPGRADE REQUEST: User {user.email} wants to upgrade to {plan}')
-    return jsonify({'ok': True, 'message': f'Upgrade request received for {plan} plan. We will contact you within 24 hours at {user.email}.'})
-
-
 @app.route('/qb/connect')
 @login_required
 def qb_connect():
