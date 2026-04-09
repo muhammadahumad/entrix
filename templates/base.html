@@ -93,6 +93,7 @@ a:hover{text-decoration:underline}
   <a href="/bank" class="nav-link {% if request.path == '/bank' %}active{% endif %}">Bank</a>
   <a href="/vendors" class="nav-link {% if request.path == '/vendors' %}active{% endif %}">Vendors</a>
   <a href="/settings" class="nav-link {% if request.path == '/settings' %}active{% endif %}">Settings</a>
+  <a href="/billing" class="nav-link {% if request.path == '/billing' %}active{% endif %}">Billing</a>
   <div class="nav-right">
     <span>{{ session.get('user_name', '') }}</span>
     <a href="/logout" class="btn btn-sm">Sign out</a>
