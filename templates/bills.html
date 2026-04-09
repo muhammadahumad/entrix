@@ -155,7 +155,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 var extractedData = null;
 var vendorMatch = null;
@@ -342,42 +341,40 @@ function exportCSV(){
 
 function exportExcel(){
   if(!extractedData){alert('No data to export');return;}
-  if(typeof XLSX==='undefined'){alert('Excel library not loaded yet. Please wait a moment and try again.');return;}
   var d=getExportData();
-  var wb=XLSX.utils.book_new();
-  var rows=[
-    ['ENTRIX BILL EXPORT',''],
-    ['',''],
-    ['Vendor',d.vendor||''],
-    ['Invoice Number',d.invno||''],
-    ['Invoice Date',d.date||''],
-    ['Due Date',d.due||''],
-    ['Currency',d.currency||''],
-    ['TIN Number',d.tin||''],
-    ['QB Account',d.account||''],
-    ['Notes',d.notes||''],
-    ['',''],
-    ['Subtotal',d.subtotal||0],
-    ['Tax',d.tax||0],
-    ['TOTAL',d.total||0]
-  ];
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+  html+='<head><meta charset="UTF-8"><style>td{mso-number-format:General;padding:4px 8px;}th{background:#f0f0f0;font-weight:bold;padding:4px 8px;}</style></head><body>';
+  html+='<table><tr><th colspan="2">ENTRIX BILL EXPORT</th></tr>';
+  html+='<tr><td></td><td></td></tr>';
+  html+='<tr><td>Vendor</td><td>'+d.vendor+'</td></tr>';
+  html+='<tr><td>Invoice Number</td><td>'+d.invno+'</td></tr>';
+  html+='<tr><td>Invoice Date</td><td>'+d.date+'</td></tr>';
+  html+='<tr><td>Due Date</td><td>'+(d.due||'')+'</td></tr>';
+  html+='<tr><td>Currency</td><td>'+d.currency+'</td></tr>';
+  html+='<tr><td>TIN Number</td><td>'+d.tin+'</td></tr>';
+  html+='<tr><td>QB Account</td><td>'+d.account+'</td></tr>';
+  html+='<tr><td>Notes</td><td>'+(d.notes||'')+'</td></tr>';
+  html+='<tr><td></td><td></td></tr>';
+  html+='<tr><td>Subtotal</td><td>'+d.subtotal+'</td></tr>';
+  html+='<tr><td>Tax</td><td>'+d.tax+'</td></tr>';
+  html+='<tr><td><b>TOTAL</b></td><td><b>'+d.total+'</b></td></tr>';
   if(d.items&&d.items.length){
-    rows.push(['','']);
-    rows.push(['LINE ITEMS','']);
-    rows.push(['Description','Quantity','Unit Price','Total']);
+    html+='<tr><td></td><td></td></tr>';
+    html+='<tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>';
     d.items.forEach(function(item){
-      rows.push([
-        item.description||'',
-        item.quantity||1,
-        item.unit_price||0,
-        item.total||0
-      ]);
+      html+='<tr><td>'+(item.description||'')+'</td><td>'+(item.quantity||1)+'</td><td>'+(item.unit_price||0)+'</td><td>'+(item.total||0)+'</td></tr>';
     });
   }
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:22},{wch:30}];
-  XLSX.utils.book_append_sheet(wb,'Bill',ws);
-  XLSX.writeFile(wb,'entrix-bill-'+(d.invno||'export')+'.xlsx');
+  html+='</table></body></html>';
+  var blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='entrix-bill-'+(d.invno||'export')+'.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
   document.getElementById('review-status').innerHTML='<span>Excel exported!</span>';
 }
 
