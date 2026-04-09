@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Billing — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title">Billing & plan</h1>
+  <p class="page-sub">Manage your Entrix subscription</p>
+
+  <div class="card">
+    <div class="card-title">Current plan</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+      <div>
+        <div style="font-size:22px;font-weight:600">{{ plan.name }}
+          {% if user.plan == 'free' %}<span class="badge badge-gray" style="font-size:12px;vertical-align:middle">Free</span>{% endif %}
+          {% if user.plan == 'starter' %}<span class="badge badge-blue" style="font-size:12px;vertical-align:middle">$5/mo</span>{% endif %}
+          {% if user.plan == 'business' %}<span class="badge badge-green" style="font-size:12px;vertical-align:middle">$12/mo</span>{% endif %}
+        </div>
+        <div style="font-size:13px;color:#666;margin-top:4px">
+          {% if plan.scans >= 999999 %}Unlimited scans{% else %}{{ plan.scans }} scans/month{% endif %} ·
+          {% if plan.qb_posting %}QB posting included{% else %}QB posting not included{% endif %} ·
+          {% if plan.bank %}Bank statements included{% else %}Bank statements not included{% endif %}
+        </div>
+      </div>
+      {% if user.plan != 'business' %}
+      <a href="/pricing" class="btn btn-primary" style="margin-left:auto">Upgrade plan</a>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+        <span>Scans used this month</span>
+        <span style="font-weight:500">{{ scans_used }} / {% if plan.scans >= 999999 %}Unlimited{% else %}{{ plan.scans }}{% endif %}</span>
+      </div>
+      {% if plan.scans < 999999 %}
+      <div style="background:#f0f0ea;border-radius:999px;height:8px;overflow:hidden">
+        <div style="background:#2563eb;height:100%;width:{{ [((scans_used / plan.scans) * 100)|int, 100]|min }}%;border-radius:999px;transition:width .3s"></div>
+      </div>
+      <div style="font-size:12px;color:#888;margin-top:4px">{{ scans_remaining }} scans remaining this month</div>
+      {% else %}
+      <div style="font-size:12px;color:#15803d;margin-top:4px">Unlimited scans — no restrictions</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if user.plan == 'free' %}
+  <div class="alert alert-warn">
+    You are on the Free plan — limited to 10 scans/month and no QuickBooks posting. Upgrade to unlock full features.
+    <a href="/pricing" style="margin-left:8px;font-weight:500">See plans</a>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-title">How to upgrade</div>
+    <p style="font-size:13px;color:#666;line-height:1.7;margin-bottom:16px">
+      Entrix accepts payment via bank transfer. To upgrade your plan:
+    </p>
+    <ol style="font-size:13px;color:#444;line-height:2;padding-left:20px">
+      <li>Click the upgrade button below and select your plan</li>
+      <li>We will send you payment details within 24 hours</li>
+      <li>Transfer the amount to our BML account</li>
+      <li>Your plan will be activated within 1 business day</li>
+    </ol>
+    <div style="margin-top:16px;padding:12px 16px;background:#f5f5f3;border-radius:8px;font-size:13px">
+      <strong>Bank details:</strong> Bank of Maldives · Account: Skill Engineering Pvt Ltd · Contact: muahumadhu@gmail.com
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Request upgrade</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      {% if user.plan != 'starter' and user.plan != 'business' %}
+      <button class="btn btn-primary" onclick="requestUpgrade('starter')">Request Starter — $5/month</button>
+      {% endif %}
+      {% if user.plan != 'business' %}
+      <button class="btn" onclick="requestUpgrade('business')">Request Business — $12/month</button>
+      {% endif %}
+    </div>
+    <div id="upgrade-msg" style="margin-top:12px;display:none" class="alert alert-success"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function requestUpgrade(plan){
+  fetch('/api/request-upgrade',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({plan:plan})
+  }).then(r=>r.json()).then(res=>{
+    var msg=document.getElementById('upgrade-msg');
+    msg.style.display='flex';
+    msg.textContent=res.message;
+  });
+}
+</script>
+{% endblock %}

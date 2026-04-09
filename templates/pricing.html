@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Pricing — Entrix{% endblock %}
+{% block content %}
+<div class="container">
+  <h1 class="page-title" style="text-align:center">Simple, transparent pricing</h1>
+  <p class="page-sub" style="text-align:center;margin-bottom:32px">No hidden fees. Cancel anytime. Pay via bank transfer.</p>
+
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:860px;margin:0 auto 32px">
+
+    <!-- Free -->
+    <div class="card" style="text-align:center;padding:28px 20px">
+      <div style="font-size:13px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Free</div>
+      <div style="font-size:36px;font-weight:600;margin-bottom:4px">$0</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px">Forever free</div>
+      <div style="text-align:left;font-size:13px;line-height:2;color:#444;margin-bottom:20px">
+        ✓ 10 scans per month<br>
+        ✓ AI bill extraction<br>
+        ✓ Vendor database<br>
+        ✗ QuickBooks posting<br>
+        ✗ Bank statements
+      </div>
+      {% if user and user.plan == 'free' %}
+        <span class="btn" style="width:100%;justify-content:center;opacity:.5;cursor:default">Current plan</span>
+      {% else %}
+        <a href="/register" class="btn" style="width:100%;justify-content:center">Get started free</a>
+      {% endif %}
+    </div>
+
+    <!-- Starter -->
+    <div class="card" style="text-align:center;padding:28px 20px;border-color:#2563eb;position:relative">
+      <div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:#2563eb;color:#fff;font-size:11px;font-weight:600;padding:3px 12px;border-radius:999px">MOST POPULAR</div>
+      <div style="font-size:13px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Starter</div>
+      <div style="font-size:36px;font-weight:600;margin-bottom:4px">$5</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px">per month</div>
+      <div style="text-align:left;font-size:13px;line-height:2;color:#444;margin-bottom:20px">
+        ✓ 100 scans per month<br>
+        ✓ AI bill extraction<br>
+        ✓ Vendor database<br>
+        ✓ QuickBooks posting<br>
+        ✗ Bank statements
+      </div>
+      {% if user and user.plan == 'starter' %}
+        <span class="btn btn-primary" style="width:100%;justify-content:center;opacity:.5;cursor:default">Current plan</span>
+      {% else %}
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="requestUpgrade('starter')">Upgrade to Starter</button>
+      {% endif %}
+    </div>
+
+    <!-- Business -->
+    <div class="card" style="text-align:center;padding:28px 20px">
+      <div style="font-size:13px;font-weight:500;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Business</div>
+      <div style="font-size:36px;font-weight:600;margin-bottom:4px">$12</div>
+      <div style="font-size:12px;color:#888;margin-bottom:20px">per month</div>
+      <div style="text-align:left;font-size:13px;line-height:2;color:#444;margin-bottom:20px">
+        ✓ Unlimited scans<br>
+        ✓ AI bill extraction<br>
+        ✓ Vendor database<br>
+        ✓ QuickBooks posting<br>
+        ✓ Bank statements
+      </div>
+      {% if user and user.plan == 'business' %}
+        <span class="btn" style="width:100%;justify-content:center;opacity:.5;cursor:default">Current plan</span>
+      {% else %}
+        <button class="btn" style="width:100%;justify-content:center" onclick="requestUpgrade('business')">Upgrade to Business</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="upgrade-msg" style="display:none;max-width:860px;margin:0 auto 16px" class="alert alert-success"></div>
+
+  <div style="max-width:860px;margin:0 auto">
+    <div class="card">
+      <div class="card-title">How payment works</div>
+      <p style="font-size:13px;color:#666;line-height:1.7">
+        Entrix accepts payment via BML bank transfer. Click upgrade, we will send you our bank details within 24 hours, and your plan will be activated the same day we receive your transfer. No credit card needed.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function requestUpgrade(plan){
+  {% if user %}
+  fetch('/api/request-upgrade',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({plan:plan})
+  }).then(r=>r.json()).then(res=>{
+    var msg=document.getElementById('upgrade-msg');
+    msg.style.display='flex';
+    msg.textContent=res.message;
+    window.scrollTo(0,0);
+  });
+  {% else %}
+  window.location='/register';
+  {% endif %}
+}
+</script>
+{% endblock %}
