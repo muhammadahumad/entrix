@@ -346,21 +346,36 @@ function exportExcel(){
   var d=getExportData();
   var wb=XLSX.utils.book_new();
   var rows=[
-    ['ENTRIX BILL EXPORT'],[''],
-    ['Vendor',d.vendor],['Invoice Number',d.invno],['Invoice Date',d.date],
-    ['Due Date',d.due],['Currency',d.currency],['TIN Number',d.tin],
-    ['QB Account',d.account],['Notes',d.notes],[''],
-    ['Subtotal',String(d.subtotal)],['Tax',String(d.tax)],['TOTAL',String(d.total)]
+    ['ENTRIX BILL EXPORT',''],
+    ['',''],
+    ['Vendor',d.vendor||''],
+    ['Invoice Number',d.invno||''],
+    ['Invoice Date',d.date||''],
+    ['Due Date',d.due||''],
+    ['Currency',d.currency||''],
+    ['TIN Number',d.tin||''],
+    ['QB Account',d.account||''],
+    ['Notes',d.notes||''],
+    ['',''],
+    ['Subtotal',d.subtotal||0],
+    ['Tax',d.tax||0],
+    ['TOTAL',d.total||0]
   ];
-  if(d.items.length){
-    rows.push(['']);rows.push(['LINE ITEMS']);
+  if(d.items&&d.items.length){
+    rows.push(['','']);
+    rows.push(['LINE ITEMS','']);
     rows.push(['Description','Quantity','Unit Price','Total']);
     d.items.forEach(function(item){
-      rows.push([String(item.description||''),String(item.quantity||1),String(item.unit_price||0),String(item.total||0)]);
+      rows.push([
+        item.description||'',
+        item.quantity||1,
+        item.unit_price||0,
+        item.total||0
+      ]);
     });
   }
   var ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:20},{wch:30}];
+  ws['!cols']=[{wch:22},{wch:30}];
   XLSX.utils.book_append_sheet(wb,'Bill',ws);
   XLSX.writeFile(wb,'entrix-bill-'+(d.invno||'export')+'.xlsx');
   document.getElementById('review-status').innerHTML='<span>Excel exported!</span>';
