@@ -437,7 +437,8 @@ function exportPDF(){
   w.document.close();
   setTimeout(function(){w.print();},500);
 }
-</script>
+
+function resetForm(){
   extractedData=null;vendorMatch=null;tinExempt=false;
   document.getElementById('upload-section').style.display='block';
   document.getElementById('processing-section').style.display='none';
