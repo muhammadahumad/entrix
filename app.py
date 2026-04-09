@@ -539,9 +539,9 @@ def api_post_bill():
 
     inv_number = data.get('invoice_number', '')
     if inv_number:
-        existing = Bill.query.filter_by(user_id=user.id, invoice_number=inv_number, vendor_id=vendor.id).first()
-        if existing:
-            return jsonify({'ok': False, 'error': f'Duplicate invoice — {inv_number} already exists for this vendor'})
+    existing = Bill.query.filter_by(user_id=user.id, invoice_number=inv_number, vendor_id=vendor.id).first()
+    if existing and existing.status == 'posted':
+        return jsonify({'ok': False, 'error': f'Duplicate invoice — {inv_number} already exists for this vendor'})
 
     bill = Bill(
         user_id=user.id,
