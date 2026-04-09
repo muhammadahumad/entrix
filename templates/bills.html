@@ -130,12 +130,26 @@
 
     <div class="actions">
       {% if user.plan == 'free' %}
-      <button class="btn btn-success" id="export-btn" onclick="exportCSV()">Export to CSV</button>
+      <div style="position:relative;display:inline-block">
+        <button class="btn btn-success" onclick="toggleExportMenu()">Export ▾</button>
+        <div id="export-menu" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid #e5e5e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;min-width:160px;padding:4px 0;margin-top:4px">
+          <button onclick="exportCSV();toggleExportMenu()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;font-size:13px;cursor:pointer;color:#1a1a1a" onmouseover="this.style.background='#f5f5f3'" onmouseout="this.style.background='none'">📄 CSV</button>
+          <button onclick="exportExcel();toggleExportMenu()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;font-size:13px;cursor:pointer;color:#1a1a1a" onmouseover="this.style.background='#f5f5f3'" onmouseout="this.style.background='none'">📊 Excel (.xlsx)</button>
+          <button onclick="exportPDF();toggleExportMenu()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;font-size:13px;cursor:pointer;color:#1a1a1a" onmouseover="this.style.background='#f5f5f3'" onmouseout="this.style.background='none'">📋 PDF Report</button>
+        </div>
+      </div>
       <button class="btn" id="post-btn" onclick="postBill()">Save to Entrix</button>
       <a href="/pricing" class="btn btn-primary">Upgrade for QB posting</a>
       {% else %}
       <button class="btn btn-success" id="post-btn" onclick="postBill()">Post to QuickBooks + Save</button>
-      <button class="btn" id="export-btn" onclick="exportCSV()">Export CSV</button>
+      <div style="position:relative;display:inline-block">
+        <button class="btn" onclick="toggleExportMenu()">Export ▾</button>
+        <div id="export-menu" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid #e5e5e0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);z-index:100;min-width:160px;padding:4px 0;margin-top:4px">
+          <button onclick="exportCSV();toggleExportMenu()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;font-size:13px;cursor:pointer;color:#1a1a1a" onmouseover="this.style.background='#f5f5f3'" onmouseout="this.style.background='none'">📄 CSV</button>
+          <button onclick="exportExcel();toggleExportMenu()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;font-size:13px;cursor:pointer;color:#1a1a1a" onmouseover="this.style.background='#f5f5f3'" onmouseout="this.style.background='none'">📊 Excel (.xlsx)</button>
+          <button onclick="exportPDF();toggleExportMenu()" style="display:block;width:100%;text-align:left;padding:8px 14px;border:none;background:none;font-size:13px;cursor:pointer;color:#1a1a1a" onmouseover="this.style.background='#f5f5f3'" onmouseout="this.style.background='none'">📋 PDF Report</button>
+        </div>
+      </div>
       {% endif %}
       <button class="btn" onclick="resetForm()">Scan another</button>
     </div>
@@ -144,6 +158,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 var extractedData = null;
 var vendorMatch = null;
@@ -315,7 +330,113 @@ function postBill(){
   });
 }
 
-function resetForm(){
+function toggleExportMenu(){
+  var m=document.getElementById('export-menu');
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#export-menu')&&!e.target.textContent.includes('Export')){
+    var m=document.getElementById('export-menu');
+    if(m)m.style.display='none';
+  }
+});
+
+function getExportData(){
+  return {
+    vendor: document.getElementById('b-vendor').value,
+    invno: document.getElementById('b-invno').value,
+    date: document.getElementById('b-date').value,
+    due: document.getElementById('b-due').value,
+    currency: document.getElementById('b-currency').value,
+    tin: document.getElementById('b-tin').value,
+    account: document.getElementById('b-account').value,
+    notes: document.getElementById('b-notes').value,
+    subtotal: extractedData?extractedData.subtotal||0:0,
+    tax: extractedData?extractedData.tax||0:0,
+    total: extractedData?extractedData.total||0:0,
+    items: extractedData?extractedData.line_items||[]:[]
+  };
+}
+
+function exportExcel(){
+  if(!extractedData){alert('No data to export');return;}
+  var d=getExportData();
+  var wb=XLSX.utils.book_new();
+
+  var summaryData=[
+    ['ENTRIX BILL EXPORT'],
+    [],
+    ['Vendor',d.vendor],
+    ['Invoice Number',d.invno],
+    ['Invoice Date',d.date],
+    ['Due Date',d.due],
+    ['Currency',d.currency],
+    ['TIN Number',d.tin],
+    ['QB Account',d.account],
+    ['Notes',d.notes],
+    [],
+    ['Subtotal',d.subtotal],
+    ['Tax',d.tax],
+    ['TOTAL',d.total]
+  ];
+
+  if(d.items.length){
+    summaryData.push([]);
+    summaryData.push(['LINE ITEMS']);
+    summaryData.push(['Description','Quantity','Unit Price','Total']);
+    d.items.forEach(function(item){
+      summaryData.push([item.description,item.quantity||1,item.unit_price||0,item.total||0]);
+    });
+  }
+
+  var ws=XLSX.utils.aoa_to_sheet(summaryData);
+  ws['!cols']=[{wch:20},{wch:30}];
+  XLSX.utils.book_append_sheet(wb,'Bill',ws);
+  XLSX.writeFile(wb,'entrix-bill-'+(d.invno||'export')+'.xlsx');
+
+  var bar=document.getElementById('review-status');
+  bar.className='status-bar status-success';
+  bar.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="20 6 9 17 4 12"/></svg><span>Excel file exported!</span>';
+}
+
+function exportPDF(){
+  if(!extractedData){alert('No data to export');return;}
+  var d=getExportData();
+  var html='<html><head><style>body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:32px}h1{font-size:20px;margin-bottom:4px}h2{font-size:14px;color:#666;font-weight:normal;margin-bottom:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 32px;margin-bottom:20px}.label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:.04em}.value{font-weight:500}table{width:100%;border-collapse:collapse;margin-top:16px}th{text-align:left;padding:8px;background:#f5f5f3;font-size:11px;text-transform:uppercase;letter-spacing:.04em}td{padding:8px;border-bottom:1px solid #f0f0ea}.totals{text-align:right;margin-top:12px}.total-row{display:flex;justify-content:flex-end;gap:40px;padding:4px 0}.total-final{font-weight:600;font-size:15px;border-top:1px solid #e0e0da;margin-top:4px;padding-top:8px}footer{margin-top:32px;font-size:11px;color:#aaa;border-top:1px solid #f0f0ea;padding-top:12px}</style></head><body>';
+  html+='<h1>Bill / Invoice</h1><h2>Exported from Entrix</h2>';
+  html+='<div class="grid">';
+  html+='<div><div class="label">Vendor</div><div class="value">'+d.vendor+'</div></div>';
+  html+='<div><div class="label">Invoice Number</div><div class="value">'+d.invno+'</div></div>';
+  html+='<div><div class="label">Invoice Date</div><div class="value">'+d.date+'</div></div>';
+  html+='<div><div class="label">Due Date</div><div class="value">'+(d.due||'—')+'</div></div>';
+  html+='<div><div class="label">TIN Number</div><div class="value">'+d.tin+'</div></div>';
+  html+='<div><div class="label">Currency</div><div class="value">'+d.currency+'</div></div>';
+  html+='<div><div class="label">Account</div><div class="value">'+d.account+'</div></div>';
+  html+='<div><div class="label">Notes</div><div class="value">'+(d.notes||'—')+'</div></div>';
+  html+='</div>';
+
+  if(d.items.length){
+    html+='<table><thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th style="text-align:right">Total</th></tr></thead><tbody>';
+    d.items.forEach(function(item){
+      html+='<tr><td>'+item.description+'</td><td>'+(item.quantity||1)+'</td><td>'+fmt(item.unit_price)+'</td><td style="text-align:right">'+fmt(item.total)+'</td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+
+  html+='<div class="totals">';
+  html+='<div class="total-row"><span style="color:#888">Subtotal</span><span>'+d.currency+' '+fmt(d.subtotal)+'</span></div>';
+  html+='<div class="total-row"><span style="color:#888">Tax</span><span>'+d.currency+' '+fmt(d.tax)+'</span></div>';
+  html+='<div class="total-row total-final"><span>Total</span><span>'+d.currency+' '+fmt(d.total)+'</span></div>';
+  html+='</div>';
+  html+='<footer>Generated by Entrix · entrix-production.up.railway.app · '+new Date().toLocaleDateString()+'</footer>';
+  html+='</body></html>';
+
+  var w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function(){w.print();},500);
+}
+</script>
   extractedData=null;vendorMatch=null;tinExempt=false;
   document.getElementById('upload-section').style.display='block';
   document.getElementById('processing-section').style.display='none';
